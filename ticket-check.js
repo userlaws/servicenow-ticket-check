@@ -523,6 +523,9 @@
   // ticket is on hold for the user.
   const PROMISE = /\b(i'?ll|i will|we'?ll|we will)\s+(keep you (updated|posted|informed)|let you know|update you|provide (you with )?an update|get back to you|follow up with you|reach out (to you )?(once|when|as soon))/i;
 
+  // Work notes that only say the ticket is still being worked on.
+  const STATUS_NOTE = /^((the )?ticket (is )?(still )?in progress|in progress|(i am |i'?m |we are |we'?re )?still working on (this|it)|working on (this|it)|no update( yet)?( on this( request)?)?|still waiting( on central| for central)?|waiting (on|for) central)\.?$/i;
+
   const behind = [];
   for (const t of openT) {
     const who = firstName(t.caller_id);
@@ -587,9 +590,16 @@
       const followUps = new Set(asking.map((r) => r.at.toDateString())).size;
       line = `${who} hasn't had a reply since ${fmtDate(t.lastReply.at)}`
         + `${t.lastReply.by !== t.assigned_to ? ` (that one was from ${staffName(t.lastReply.by)})` : ''}.`;
-      // Only placeholder work notes since the last reply, which the user can't see.
-      const fillers = t.notes.filter((n) => n.at > t.lastReply.at && /^ticket in progress\.?$/i.test(clean(n.text)));
-      if (fillers.length >= 2) line += ` Since then there are only "Ticket in progress" work notes, which ${who} can't see.`;
+      // Status-only work notes since the last reply ("Ticket in progress",
+      // "I am still working on this", the same note pasted every day). The
+      // user can't see any of them, so the update never reaches them.
+      const notesSince = t.notes.filter((n) => n.at > t.lastReply.at);
+      const fillers = notesSince.filter((n) => STATUS_NOTE.test(clean(n.text))
+        || notesSince.filter((o) => clean(o.text) === clean(n.text)).length >= 2);
+      if (fillers.length >= 2) {
+        line += ` Since then there are only work notes like "${shorten(clean(fillers[0].text), 50)}", which ${who} can't see.`;
+        if (!onHoldForUser) line += ' Post the update as a comment.';
+      }
       if (promise && onHoldForUser) {
         line += ` IT told ${who} on ${fmtDate(promise.at)} it would keep them updated, so check that work is done before closing.`
           + (followUps < 3 ? ` Follow-ups since then: ${followUps} of 3.` : '');
@@ -619,14 +629,15 @@
 
   // ------------------------------------------------------------ resolved check
   const TEMPLATE = [
-    /good (morning|afternoon|evening)[^,.]*[,.]?/gi, /\bhello\b[^,.]*[,.]?/gi, /\bhi\b[^,.]*[,.]?/gi,
+    /good (morning|afternoon|evening)[^,.!]{0,40}[,.!]?/gi, /\bhello\b[^,.!]{0,40}[,.!]?/gi, /\bhi\b[^,.!]{0,40}[,.!]?/gi,
     /this ticket will be closed now[,.]?/gi, /we are closing this ticket[^.]*\./gi,
-    /if you have any (further )?questions[^.]*\./gi, /please (feel free|don'?t hesitate)[^.]*\./gi,
+    /if you have any (further |other )?(questions?|concerns?)[^.]*\./gi, /please (feel free|don'?t hesitate)[^.]*\./gi,
+    /if (any )?(other|further|more) (issues?|problems?|questions?) (occurs?|come up|arise)[^.,!]{0,120}[,.!]?/gi, /feel free (to )?(email|call|contact|reach)[^.]*\./gi,
     /thank you[^.!]*[.!]/gi, /thanks[^.!]*[.!]/gi, /(best|kind)? ?regards,?/gi, /best,/gi,
-    /it helpdesk/gi, /have a (good|great)[^.!]*[.!]?/gi, /feel free to[^.]*\./gi,
-    /if you need (any )?(further|more) (assistance|help)[^.]*[,.]?/gi, /(contact|email|call) (us|the helpdesk)[^.]*\./gi,
+    /it helpdesk/gi, /have a (good|great|nice|wonderful)( rest of (the|your))? (day|week|weekend|evening|afternoon|morning|one)( and)?[!.]?/gi, /feel free to[^.]*\./gi,
+    /if you need (any )?(further|more) (assistance|help)[^.,!]{0,120}[,.!]?/gi, /(contact|email|call) (us|the helpdesk)[^.]*\./gi,
   ];
-  const PENDING = /\b(will (contact|follow up|update|try again|attempt)|when we have an update|for now|look into it (around|in|later)|still (working|waiting))\b/i;
+  const PENDING = /\b(will (contact|follow up|update|try again|attempt)|when we have an update|for now|look into it (around|in|later)|still (working|waiting)|test (it |this )?again|try (it |this )?again|try to set (it )?up|tomorrow|hope (some ?time )?soon|(unable|not able|wasn'?t able|couldn'?t|could not) to (set (it )?up|finish|complete))\b/i;
   const fixes = [];
   for (const t of resolvedT) {
     const note = clean(t.close_notes);
@@ -651,7 +662,7 @@
       [t.assigned_to, t.caller_id].filter(Boolean).forEach((name) => name.split(' ').forEach((part) => {
         if (part.length > 2) specific = specific.replace(new RegExp(`\\b${part.replace(/[^\w-]/g, '')}\\b`, 'gi'), ' ');
       }));
-      specific = specific.replace(/\b(the|this|that|a|an|it|is|was|has|have|had|been|be|now|will|i|we|our|you|your|issue|issues|ticket|request|problem|fixed|resolved|done|completed|complete|closed|closing|close|successfully|as|of|for|and|or|to|at|on|in|with|all|being|call|us|helpdesk|help|desk|team|today|per|inc|assisted|helped|helpded|received|progress|go|ahead|time|being|hope|great|good|day|weekend|give|thank|kind|if|any|further|questions|concerns|please|email|feel|free|reach|out|contact|anytime|task|dome|glad|m|since|spoke|phone|tel|about|course|solved|but|me|come|reaching|stopping|by|issues|anything|else)\b/gi, ' ')
+      specific = specific.replace(/\b(the|this|that|a|an|it|is|was|has|have|had|been|be|now|will|i|we|our|you|your|issue|issues|ticket|request|problem|fixed|resolved|done|completed|complete|closed|closing|close|successfully|as|of|for|and|or|to|at|on|in|with|all|being|call|us|helpdesk|help|desk|team|today|per|inc|assisted|helped|helpded|received|progress|go|ahead|time|being|hope|great|good|day|weekend|give|thank|kind|if|any|further|questions|concerns|please|email|feel|free|reach|out|contact|anytime|task|dome|glad|m|since|spoke|phone|tel|about|course|solved|but|me|come|reaching|stopping|by|issues|anything|else|question|concern|other|occur|occurs|coming|visiting|able|were)\b/gi, ' ')
         .replace(/[^\w]+/g, ' ').trim();
       if (specific.length < 4) problems.push(`the note ("${shorten(note, 60)}") doesn't say what was done`);
     }

@@ -4,6 +4,26 @@ All dates are MM/DD/YYYY. The plain-text report that Copy produces has kept
 the same format since 1.0, so pasting it into Teams works the same way in
 every version.
 
+## 3.2.0 (10/21/2026)
+
+More rule fixes found by checking a report line by line.
+
+- Resolution notes with a real "Resolution Notes:" line after the closing
+  template were wrongly flagged as not saying what was done. The "Have a great
+  rest of the day" pattern ran to the end of the note when no period followed
+  it, and swallowed the line that said what was done. Greeting and closing
+  patterns now stop within one sentence.
+- Closing templates in the singular ("If you have any question, feel free to
+  email us") and "If any other issues occur" are now recognized, so a note
+  that's only the template is flagged.
+- Closing notes that say the work isn't done are flagged as not finished,
+  for example "unable to set up TOTP, hope we can test again soon" or "please
+  try again tomorrow".
+- Status-only work notes since the last reply, like "I am still working on
+  this", "no update" or the same note pasted every day, are called out the
+  same way "Ticket in progress" notes were, with a reminder to post the update
+  as a comment the user can see.
+
 ## 3.1.0 (10/19/2026)
 
 Rule fixes found by checking a report line by line.

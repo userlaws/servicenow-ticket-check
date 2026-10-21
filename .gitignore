@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+bookmark.html
+.env*
+.DS_Store
+Thumbs.db
+.claude/
+.vscode/

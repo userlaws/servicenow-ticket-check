@@ -20,8 +20,8 @@ const FLAGS = [
   { pill: "No reply", tone: "red", title: "Users nobody answered", body: "Someone wrote back and the newest message on the ticket is still theirs." },
   { pill: "Work note", tone: "red", title: "Replies that never went out", body: "A message to the user was typed as a work note, so they never got it." },
   { pill: "Follow-up 2/3", tone: "amber", title: "Follow-ups on hold tickets", body: "Counts the days you followed up and says when a ticket can close as no response." },
-  { pill: "Thu 10/15", tone: "blue", title: "Events this week", body: "Pulls the date, time and room out of ticket text for Monday to Friday." },
-  { pill: "Weak note", tone: "violet", title: "Resolutions that need a fix", body: "Notes like “issue fixed.” that don't say what was done, or tickets closed with no reply." },
+  { pill: "Thu 10/15", tone: "blue", title: "Events this week", body: "Pulls the date, time and room out of ticket text, including “tomorrow”, and follows work notes that move the date." },
+  { pill: "Weak note", tone: "violet", title: "Resolutions that need a fix", body: "Notes like “issue fixed.” that don't say what was done, work closed before it's finished, and tickets closed as no response too early." },
 ];
 
 // Every request the script sends, in order. Taken from ticket-check.js.

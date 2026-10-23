@@ -12,9 +12,10 @@ const JOURNAL = [
 
 const RULES = [
   "Only Additional comments are emailed to the user. Work notes stay with IT.",
-  "“Thanks, that worked” from a user doesn't put a ticket behind.",
+  "“Thanks, that worked” or “I'll check tomorrow” from a user doesn't put a ticket behind.",
+  "Work notes that only say “still working on this” don't count as an update. The user can't see them.",
   "Follow-ups are counted by day. Two on the same day count as one.",
-  "On hold for the user with follow-ups on three different days and no answer: ready to close.",
+  "On hold for the user with follow-ups on three different days and no answer: ready to close. Not if IT promised the user an update.",
   "A comment typed into ServiceNow by anyone other than the caller counts as IT. User replies come in by email.",
 ];
 

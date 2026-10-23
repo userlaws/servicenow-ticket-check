@@ -36,7 +36,7 @@ The Copy button is what marks a report as sent. The next report counts resolved 
 
 The opening lines count how many tickets were resolved and opened since the last report you copied. Automated notices (PaperCut, Xerox, order and digest emails) are left out.
 
-**Events this week** lists events found in open tickets for the Monday to Friday week the report will be read in. After 3 PM it assumes you'll read it the next morning. It shows the time and room when the ticket mentions them, and whether the user has heard from IT. If a work note moves the event ("new date Tuesday the 27th"), the new date is used.
+**Events this week** lists events found in open tickets for the Monday to Friday week the report will be read in. After 3 PM it assumes you'll read it the next morning. It shows the time and room when the ticket mentions them, and whether the user has heard from IT. If a work note moves the event ("new date Tuesday the 27th"), the new date is used. An event written as "tomorrow" or "today" is counted from the day the ticket was opened.
 
 **In progress, needs a reply** and **On hold, needs a reply** list open tickets where:
 
@@ -50,7 +50,7 @@ The opening lines count how many tickets were resolved and opened since the last
 
 Tickets on hold waiting for the user show which follow-up is next. After follow-ups on three different days with no answer, the report says the ticket can be closed as no response, unless IT promised the user an update. An In Progress ticket where IT has written on two or more days with no answer is flagged to go on hold.
 
-**Resolved, needs a fix** lists tickets closed since the last run where the resolution note doesn't say what was done, still has a placeholder like "Good afternoon name", tells the user not to respond, says the work isn't finished, or contains rude wording. It also lists email tickets that were closed without the user ever getting a reply.
+**Resolved, needs a fix** lists tickets closed since the last run where the resolution note doesn't say what was done, still has a placeholder like "Good afternoon name", tells the user not to respond, says the work isn't finished, or contains rude wording. It also lists email tickets that were closed without the user ever getting a reply, and tickets closed as no response before follow-ups on three different days.
 
 **Doing well** names the people with nothing waiting on a reply.
 
@@ -70,7 +70,9 @@ The settings are at the top of the script, in `CONFIG`.
 
 A reply to the user is an "Additional comment" from IT. Someone counts as IT if they're in your groups, are assigned a ticket, have written a work note, or typed the comment straight into ServiceNow. User replies arrive by email and start with "reply from:", so a typed comment from anyone other than the caller is IT. Work notes never count as replies, because the user can't see them.
 
-Tickets opened by IT staff for themselves are left out of the reply checks but still show up as events.
+Tickets opened by IT staff for themselves are left out of the reply and resolution checks but still show up as events.
+
+Each rule change is tested against three years of a help desk's tickets before release; [CHANGELOG.md](CHANGELOG.md) says what changed and why.
 
 ## What it can't see
 

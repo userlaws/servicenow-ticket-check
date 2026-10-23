@@ -4,6 +4,36 @@ All dates are MM/DD/YYYY. The plain-text report that Copy produces has kept
 the same format since 1.0, so pasting it into Teams works the same way in
 every version.
 
+## 3.3.0 (10/22/2026)
+
+Rule fixes, each tested against 3 years of tickets before release.
+
+- Events written as "tomorrow" or "today" are now found, counted from the day
+  the ticket was opened. They only count with a time, a room or equipment on
+  the same line, and never for logins, MFA, deadlines or someone's
+  availability.
+- User replies like "I'll check tomorrow when I'm back" or "everything is
+  running smoothly" no longer put a ticket behind. A bare "yes" or "no" still
+  does, because it's usually an answer IT has to act on.
+- Only the automated PaperCut and Xerox notices are skipped now. Real requests
+  with "PaperCut" or "Xerox" in the title, like "PaperCut Access", are checked
+  like any other ticket.
+- Tickets closed as no response are checked against the follow-up rule: they
+  need follow-ups on three different days first. It also flags a ticket closed
+  as "haven't heard back" when the user actually wrote last.
+- "Not finished" closing notes are narrowed to IT's own unfinished work
+  ("closing this for now", "I'll update you once it's done", "will contact you
+  in 2 weeks", "unable to set up TOTP"). Normal closings like "please try
+  again", "return the laptop tomorrow" or "test it again" no longer trip it.
+- Resolution notes: greetings only remove the greeting and the name, so "Good
+  morning Alex, here is the link for the depot form" keeps its content. Staff
+  names alone ("Resolved by Pat") don't count as saying what was done.
+  Stock thank-you lines are recognized without swallowing a real fix ("Thank
+  you for confirming the VPN was fixed").
+- More placeholder work notes are recognized ("waiting for updates",
+  "awaiting response", "please assist"), and a line no longer says both "post
+  the update as a comment" and "send an update".
+
 ## 3.2.0 (10/21/2026)
 
 More rule fixes found by checking a report line by line.

@@ -1,6 +1,6 @@
 # Ticket Check
 
-A bookmark for ServiceNow help desks. Click it on any ServiceNow page and it lists the open tickets where a user is still waiting on IT, replies that were saved as work notes by mistake, this week's events, and resolved tickets whose notes don't say what was done. One button copies the whole thing as a plain-text report for Teams.
+A bookmark for ServiceNow help desks. Click it on any ServiceNow page and it lists the open tickets where a user is still waiting on IT, replies that were saved as work notes by mistake, this week's events, and resolved tickets whose notes don't say what was done. One button copies the whole thing as a report for Teams, with bold headings, bullets and ticket numbers that link to the ticket.
 
 It runs in your own browser, as you. It only reads: nothing in ServiceNow changes and no ticket data leaves your computer.
 

@@ -4,6 +4,14 @@ All dates are MM/DD/YYYY. The plain-text report that Copy produces has kept
 the same format since 1.0, so pasting it into Teams works the same way in
 every version.
 
+## 3.5.0 (10/28/2026)
+
+- Copy now copies a formatted report as well as plain text. Pasted into
+  Teams or Outlook it keeps bold section headings and bullets, the assignee
+  at the start of each line is bold, and each ticket number links to the
+  ticket on your own ServiceNow instance. Pasting into Notepad or anywhere
+  that only takes plain text gives the same text as before.
+
 ## 3.4.0 (10/27/2026)
 
 Fixes found by checking a report line by line, each tested against 3 years

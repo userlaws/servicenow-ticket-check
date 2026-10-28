@@ -427,7 +427,10 @@
   const NOT_SUPPORT = /\b(mfa|multi-?factor|authenticat\w*|password|log ?in|sign ?in|duo|registration is open|availab\w*)\b/i;
   const EQUIPMENT = /\b(laptops?|scanners?|mics?|microphones?|projectors?|webcams?|cameras?|zoom|speakers?|monitors?|tvs?|clickers?)\b/i;
   const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-  const WEEKDAY = new RegExp(`\\b(?:on|this|this coming)\\s+(${WEEKDAYS.join('|')})\\b(?!,? (?:${MONTHS.join('|')}|\\d))`, 'i');
+  const WEEKDAY = new RegExp(`\\b(?:on|this|this coming)\\s+(${WEEKDAYS.join('|')})\\b(?!,? (?:${MONTHS.join('|')}|\\d)| (?:mornings|afternoons|evenings|nights))`, 'i');
+  // Weekday lines about something that already happened, a laptop return or
+  // a start date aren't events. Tested on 3 years of tickets.
+  const NOT_UPCOMING = /\b(was|were|had|came|returned|borrowed|received|took place|went|happened|last|ago|return|returning|drop(ping)? (it |the \w+ )?off|next week|start (on|date))\b/i;
   const events = [];
   // An event has passed once its day is over, or on the day itself once its
   // start time has gone by.
@@ -510,7 +513,7 @@
     if (!found) {
       const openedDay = parseDate(t.opened_at);
       const rel = openedDay && [t.short_description, ...(t.description || '').split(/\r?\n|(?<=[.!?])\s+/)]
-        .find((l) => WEEKDAY.test(l) && (EVENT_WORDS.test(l) || EVENT_WORDS.test(t.short_description) || EQUIPMENT.test(l))
+        .find((l) => WEEKDAY.test(l) && !NOT_UPCOMING.test(l) && (EVENT_WORDS.test(l) || EVENT_WORDS.test(t.short_description) || EQUIPMENT.test(l))
           && !NOT_EVENT.test(l) && !NOT_SUPPORT.test(l) && !NOT_SUPPORT.test(t.short_description) && !EMAIL_STAMP.test(l));
       if (rel) {
         const want = WEEKDAYS.indexOf(rel.match(WEEKDAY)[1].toLowerCase()) + 1;
@@ -643,17 +646,10 @@
       const promise = sinceUser.filter((r) => PROMISE.test(ownWords(r.text))).sort((a, b) => b.at - a.at)[0];
       const asking = (promise ? sinceUser.filter((r) => r.at > promise.at) : sinceUser).sort((a, b) => a.at - b.at);
       // The first reply answers the user or asks them something; only the
-      // ones after it are follow-ups. Posting the same message again on a
-      // later day isn't a follow-up either.
-      const seen = new Set();
-      const key = (r) => clean(ownWords(r.text)).toLowerCase().slice(0, 80);
-      const followed = asking.filter((r, i) => {
-        const k = key(r);
-        const repeat = seen.has(k);
-        seen.add(k);
-        return !repeat && (promise || i > 0);
-      });
-      const followUps = new Set(followed.map((r) => r.at.toDateString())).size;
+      // ones after it are follow-ups. Re-posting the same message on a later
+      // day does count: that's how the team usually follows up.
+      const firstDay = !promise && asking.length ? asking[0].at.toDateString() : null;
+      const followUps = new Set(asking.map((r) => r.at.toDateString()).filter((d) => d !== firstDay)).size;
       line = `${who} hasn't had a reply since ${fmtDate(t.lastReply.at)}`
         + `${t.lastReply.by !== t.assigned_to ? ` (that one was from ${staffName(t.lastReply.by)})` : ''}.`;
       // Status-only work notes since the last reply ("Ticket in progress",

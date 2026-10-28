@@ -426,7 +426,23 @@
   const REL_DAY = /\b(tomorrow|today|tonight|this (morning|afternoon|evening))\b/i;
   const NOT_SUPPORT = /\b(mfa|multi-?factor|authenticat\w*|password|log ?in|sign ?in|duo|registration is open|availab\w*)\b/i;
   const EQUIPMENT = /\b(laptops?|scanners?|mics?|microphones?|projectors?|webcams?|cameras?|zoom|speakers?|monitors?|tvs?|clickers?)\b/i;
+  const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+  const WEEKDAY = new RegExp(`\\b(?:on|this|this coming)\\s+(${WEEKDAYS.join('|')})\\b(?!,? (?:${MONTHS.join('|')}|\\d))`, 'i');
   const events = [];
+  // An event has passed once its day is over, or on the day itself once its
+  // start time has gone by.
+  const eventPassed = (e) => {
+    const today = new Date(now.toDateString());
+    if (e.day < today) return true;
+    if (e.day > today || !e.time) return false;
+    const m = e.time.match(/^(\d{1,2})(?::(\d{2}))?\s?(am|pm|a\.m\.|p\.m\.)?/i);
+    const ampm = m[3] || (e.time.match(/(am|pm|a\.m\.|p\.m\.)\s*$/i) || [])[1] || '';
+    let hour = +m[1] % 12;
+    if (/^p/i.test(ampm)) hour += 12;
+    const start = new Date(e.day);
+    start.setHours(hour, +(m[2] || 0));
+    return start < now;
+  };
   // A staff entry like "new date Tuesday the 27th 10 am" or "moved to 10/27"
   // means the date in the ticket text is out of date. The new date is read as
   // the next matching day on or after the original one.
@@ -484,6 +500,23 @@
         const day = new Date(openedDay);
         day.setHours(0, 0, 0, 0);
         if (/tomorrow/i.test(rel.match(REL_DAY)[0])) day.setDate(day.getDate() + 1);
+        const inWeek = weekDays.find((d) => d.toDateString() === day.toDateString());
+        if (inWeek) found = { t, day: inWeek, time: (rel.match(TIME) || t.short_description.match(TIME) || [])[0], room: (rel.match(ROOM) || [])[0] };
+      }
+    }
+    // No date, but a weekday ("our event on Thursday"): the first such day
+    // after the ticket was opened. "Next Thursday" is left out, since people
+    // use it for both this week and the one after.
+    if (!found) {
+      const openedDay = parseDate(t.opened_at);
+      const rel = openedDay && [t.short_description, ...(t.description || '').split(/\r?\n|(?<=[.!?])\s+/)]
+        .find((l) => WEEKDAY.test(l) && (EVENT_WORDS.test(l) || EVENT_WORDS.test(t.short_description) || EQUIPMENT.test(l))
+          && !NOT_EVENT.test(l) && !NOT_SUPPORT.test(l) && !NOT_SUPPORT.test(t.short_description) && !EMAIL_STAMP.test(l));
+      if (rel) {
+        const want = WEEKDAYS.indexOf(rel.match(WEEKDAY)[1].toLowerCase()) + 1;
+        const day = new Date(openedDay);
+        day.setHours(0, 0, 0, 0);
+        do day.setDate(day.getDate() + 1); while (day.getDay() !== want);
         const inWeek = weekDays.find((d) => d.toDateString() === day.toDateString());
         if (inWeek) found = { t, day: inWeek, time: (rel.match(TIME) || t.short_description.match(TIME) || [])[0], room: (rel.match(ROOM) || [])[0] };
       }
@@ -582,7 +615,7 @@
     } else if (twin) {
       line = `this is a duplicate of ${twin.number}, where ${who} got a reply on ${fmtDate(twin.lastReply.at)}. Close it as a duplicate or link the two.`;
       pill = 'Duplicate';
-    } else if (event && event.day < new Date(now.toDateString())) {
+    } else if (event && eventPassed(event)) {
       line = `the event was on ${fmtDate(event.day)} and the ticket is still open. Confirm it was covered and close it.`;
       pill = 'Close it';
     } else if (userWaiting) {
@@ -608,8 +641,19 @@
       // A promise to update the user restarts the count: only follow-ups
       // after it are asking the user for something.
       const promise = sinceUser.filter((r) => PROMISE.test(ownWords(r.text))).sort((a, b) => b.at - a.at)[0];
-      const asking = promise ? sinceUser.filter((r) => r.at > promise.at) : sinceUser;
-      const followUps = new Set(asking.map((r) => r.at.toDateString())).size;
+      const asking = (promise ? sinceUser.filter((r) => r.at > promise.at) : sinceUser).sort((a, b) => a.at - b.at);
+      // The first reply answers the user or asks them something; only the
+      // ones after it are follow-ups. Posting the same message again on a
+      // later day isn't a follow-up either.
+      const seen = new Set();
+      const key = (r) => clean(ownWords(r.text)).toLowerCase().slice(0, 80);
+      const followed = asking.filter((r, i) => {
+        const k = key(r);
+        const repeat = seen.has(k);
+        seen.add(k);
+        return !repeat && (promise || i > 0);
+      });
+      const followUps = new Set(followed.map((r) => r.at.toDateString())).size;
       line = `${who} hasn't had a reply since ${fmtDate(t.lastReply.at)}`
         + `${t.lastReply.by !== t.assigned_to ? ` (that one was from ${staffName(t.lastReply.by)})` : ''}.`;
       // Status-only work notes since the last reply ("Ticket in progress",
@@ -679,6 +723,8 @@
   const LOAN = /\b(return|exchange|re-?check|bring (it |the \w+ )?back)\b/i;
   const pendingIn = (note) => {
     if (NO_RESPONSE.test(note)) return false;
+    // Closed because the user asked ("closed for now as per your request").
+    if (/\b(?:as per|per|at) your request\b|\bas you (?:requested|asked)\b/i.test(note)) return false;
     const m = note.match(PENDING);
     return !!m && !(/come|stop|swing|pick/i.test(m[0]) && LOAN.test(note));
   };
@@ -729,7 +775,7 @@
     if (!t.replies.length && /email|self-service/i.test(t.contact_type || '') && waited > 1
       && !/message from unknown sender|voicemail/i.test(t.short_description)
       && !/\b(duplicate|same (ticket|request|issue) as)\b/i.test(note)) {
-      problems.push(`${firstName(t.caller_id)} never got a reply in the ${Math.floor(waited)} days it was open`);
+      problems.push(`${firstName(t.caller_id)} never got a reply in the ${Math.floor(waited)} day${Math.floor(waited) === 1 ? '' : 's'} it was open`);
     }
     if (problems.length) {
       const [pill, tone] = bad ? ['Wording', 'red']
@@ -752,7 +798,7 @@
   if (!events.length) out.push('• None found in open tickets.');
   for (const e of events) {
     const where = [e.time, e.room].filter(Boolean).join(', ');
-    const status = e.day < new Date(now.toDateString())
+    const status = eventPassed(e)
       ? 'It already happened and the ticket is still open.'
       : staff.has(e.t.caller_id) ? `${staffName(e.t.caller_id)} opened this ticket.` : (e.t.lastReply ? `${firstName(e.t.caller_id)} last heard from us on ${fmtDate(e.t.lastReply.at)}.` : `${firstName(e.t.caller_id)} hasn't had a reply confirming it.`);
     out.push(`• ${fmtDate(e.day)}: ${staffName(e.t.assigned_to)}, ${e.t.number} (${e.t.title})${where ? `, ${where}` : ''}. ${status}`);
@@ -786,7 +832,7 @@
   const hold = behind.filter((b) => /hold/i.test(b.t.state)).sort(byOwner).map(card);
   const fix = fixes.slice().sort(byOwner).map(card);
   const eventCards = events.map((e) => {
-    const passed = e.day < today;
+    const passed = eventPassed(e);
     const where = [e.time, e.room].filter(Boolean).join(', ');
     const status = passed ? 'It already happened and the ticket is still open.'
       : staff.has(e.t.caller_id) ? `${staffName(e.t.caller_id)} opened this ticket.`

@@ -36,7 +36,7 @@ The Copy button is what marks a report as sent. The next report counts resolved 
 
 The opening lines count how many tickets were resolved and opened since the last report you copied. Automated notices (PaperCut, Xerox, order and digest emails) are left out.
 
-**Events this week** lists events found in open tickets for the Monday to Friday week the report will be read in. After 3 PM it assumes you'll read it the next morning. It shows the time and room when the ticket mentions them, and whether the user has heard from IT. If a work note moves the event ("new date Tuesday the 27th"), the new date is used. An event written as "tomorrow" or "today" is counted from the day the ticket was opened.
+**Events this week** lists events found in open tickets for the Monday to Friday week the report will be read in. After 3 PM it assumes you'll read it the next morning. It shows the time and room when the ticket mentions them, and whether the user has heard from IT. If a work note moves the event ("new date Tuesday the 27th"), the new date is used. An event written as "tomorrow" or "today" is counted from the day the ticket was opened, and one written only as a weekday ("on Thursday") is the first such day after it was opened. An event earlier today counts as passed once its start time has gone by.
 
 **In progress, needs a reply** and **On hold, needs a reply** list open tickets where:
 
@@ -48,7 +48,7 @@ The opening lines count how many tickets were resolved and opened since the last
 - the event moved and nobody confirmed the new date with the user;
 - a work note calls the ticket a duplicate of another open one, so it should be closed or linked.
 
-Tickets on hold waiting for the user show which follow-up is next. After follow-ups on three different days with no answer, the report says the ticket can be closed as no response, unless IT promised the user an update. An In Progress ticket where IT has written on two or more days with no answer is flagged to go on hold.
+Tickets on hold waiting for the user show which follow-up is next. The first reply (the answer or the question to the user) isn't a follow-up; each later day IT writes is one. After follow-ups on three different days with no answer, the report says the ticket can be closed as no response, unless IT promised the user an update. An In Progress ticket where IT has written on two or more days with no answer is flagged to go on hold.
 
 **Resolved, needs a fix** lists tickets closed since the last run where the resolution note doesn't say what was done, still has a placeholder like "Good afternoon name", tells the user not to respond, says the work isn't finished, or contains rude wording. It also lists email tickets that were closed without the user ever getting a reply, and tickets closed as no response before follow-ups on three different days.
 

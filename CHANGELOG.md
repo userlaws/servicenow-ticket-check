@@ -4,6 +4,25 @@ All dates are MM/DD/YYYY. The plain-text report that Copy produces has kept
 the same format since 1.0, so pasting it into Teams works the same way in
 every version.
 
+## 3.4.0 (10/27/2026)
+
+Fixes found by checking a report line by line, each tested against 3 years
+of tickets.
+
+- Events written only as a weekday ("our event on Thursday") are now found,
+  counted as the first such day after the ticket was opened. Lines about
+  something that already happened, a laptop return, a start date or a
+  recurring day ("Tuesday evenings") are left out, and so is "next Thursday".
+- An event later today counts as passed once its start time has gone by, so
+  a report run that evening says to confirm it was covered and close it.
+- Follow-ups no longer count the first reply, which answers the user or asks
+  them something. Only the days after it count, so "Send follow-up 3 of 3"
+  isn't shown after just one follow-up. Re-posting the same message on a later
+  day still counts, since that's how most follow-ups are sent.
+- A note that closes a ticket "for now, as per your request" is no longer
+  called unfinished work. It's still flagged if it doesn't say what was done.
+- "1 days" now reads "1 day".
+
 ## 3.3.0 (10/22/2026)
 
 Rule fixes, each tested against 3 years of tickets before release.

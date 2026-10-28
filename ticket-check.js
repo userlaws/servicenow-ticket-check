@@ -266,7 +266,15 @@
         avatars.length = 0;
         const copy = h('button', 'copy', icon(ICON_COPY), 'Copy');
         copy.onclick = async () => {
-          try { await navigator.clipboard.writeText(text); } catch (e) {
+          try {
+            // Formatted for Teams and Outlook, plain text everywhere else.
+            if (model.html && window.ClipboardItem) {
+              await navigator.clipboard.write([new ClipboardItem({
+                'text/html': new Blob([model.html], { type: 'text/html' }),
+                'text/plain': new Blob([text], { type: 'text/plain' }),
+              })]);
+            } else await navigator.clipboard.writeText(text);
+          } catch (e) {
             const ta = document.createElement('textarea'); ta.value = text; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove();
           }
           if (onCopy) onCopy();
@@ -816,6 +824,28 @@
 
   const report = out.join('\n');
   console.log(report);
+  // The same report as HTML, so pasting into Teams or Outlook keeps bold
+  // headings and bullets. Ticket numbers link to the ticket on this instance,
+  // and the assignee at the start of each line is bold.
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const linked = (s) => esc(s).replace(/\bINC\d{7}\b/g,
+    (n) => `<a href="${location.origin}/nav_to.do?uri=${encodeURIComponent(`incident.do?sysparm_query=number=${n}`)}">${n}</a>`);
+  const htmlParts = [];
+  let list = null;
+  out.forEach((l, i) => {
+    if (l.startsWith('• ')) {
+      if (!list) { list = []; htmlParts.push(list); }
+      const body = l.slice(2);
+      // "Name, INC0000000 (title): ..." or "MM/DD/YYYY: Name, INC..." for events.
+      const m = body.match(/^((?:\d{2}\/\d{2}\/\d{4}: )?)([^,]+)(, INC\d{7}[\s\S]*)$/);
+      list.push(m ? `${esc(m[1])}<b>${esc(m[2])}</b>${linked(m[3])}` : linked(body));
+      return;
+    }
+    list = null;
+    if (!l) return;
+    htmlParts.push(i === 1 ? `<p>${linked(l)}</p>` : `<p><b>${esc(l)}</b></p>`);
+  });
+  const reportHtml = htmlParts.map((p) => (Array.isArray(p) ? `<ul>${p.map((x) => `<li>${x}</li>`).join('')}</ul>` : p)).join('');
   // The next report starts from this one only once it's copied, so test
   // runs don't shrink tomorrow's "since last check" window.
   const markUsed = () => { try { localStorage.setItem(lastRunKey, isoLocal(now)); } catch (e) { /* storage blocked */ } };
@@ -857,6 +887,7 @@
       { key: 'fix', title: 'Resolved, needs a fix', items: fix, empty: 'Nothing.' },
     ],
     doingWell: caughtUp,
+    html: reportHtml,
   }, report, markUsed);
 
   // Profile pictures for the people in the report, from your own instance.

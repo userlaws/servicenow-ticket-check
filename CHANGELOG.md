@@ -4,6 +4,29 @@ All dates are MM/DD/YYYY. The plain-text report that Copy produces has kept
 the same format since 1.0, so pasting it into Teams works the same way in
 every version.
 
+## 3.6.0 (10/29/2026)
+
+Fixes found by checking two reports line by line, each tested against 3
+years of tickets.
+
+- When a user sends two messages in a row ("Could I visit tomorrow?" and
+  then "Thank you, I'm still having trouble"), both are read. Before, only
+  the newest one counted, so a thank-you hid the question.
+- "I'm still experiencing" and "difficulty" now count as the user still
+  needing help, even when the message starts with thanks.
+- "Coming over now", "on my way" and "be there shortly" no longer put a
+  ticket behind, since the user is on the way to the office.
+- A resolution note that only asks the user to call or come in "to complete
+  this request" is flagged as unfinished work.
+- Tickets closed as no response count follow-ups the same way open tickets
+  do: the first reply isn't a follow-up. The report shows "without any
+  follow-ups" when there were none.
+- Events without a time next to the date take the time and room from a
+  later message or staff note that names the same day, preferring the line
+  that says when the event starts. "Atrium" is recognized as a room.
+- An unassigned ticket where the user wrote last now says "Nobody is
+  assigned yet" instead of "Unassigned should reply".
+
 ## 3.5.0 (10/28/2026)
 
 - Copy now copies a formatted report as well as plain text. Pasted into

@@ -418,7 +418,7 @@
       + `|\\b(?:${mon}|${mon.slice(0, 3)})\\.? ${day}(?:st|nd|rd|th)?\\b)`, 'i');
   };
   const TIME = /\b\d{1,2}(?::\d{2})?\s?(?:am|pm|a\.m\.|p\.m\.)(?:\s?(?:-|to|–)\s?\d{1,2}(?::\d{2})?\s?(?:am|pm|a\.m\.|p\.m\.))?/i;
-  const ROOM = /\b(?:room|rm\.?)\s*[a-z]?\d{2,4}[a-z]?\b|\b\d{2}-\d{3}\b/i;
+  const ROOM = /\b(?:room|rm\.?)\s*[a-z]?\d{2,4}[a-z]?\b|\b\d{2}-\d{3}\b|\batrium\b/i;
   // Something only counts as an event when the title or the text around the
   // date says so, which keeps election deadlines and login dates out.
   const EVENT_WORDS = /\b(event|session|meeting|summit|set ?up|workshop|presentation|training|webinar|conference|orientation|ceremony|program|council|q&a|panel|fair|common hour|booth)\b/i;
@@ -532,6 +532,17 @@
         if (inWeek) found = { t, day: inWeek, time: (rel.match(TIME) || t.short_description.match(TIME) || [])[0], room: (rel.match(ROOM) || [])[0] };
       }
     }
+    // No time next to the date: take it from a later message or staff note
+    // that names the same day ("Atrium at 1 pm on Thursday").
+    if (found && !found.time) {
+      const dayName = new RegExp(`\\b${WEEKDAYS[found.day.getDay() - 1]}\\b`, 'i');
+      const lines = [...t.userMsgs.map((c) => ownWords(c.text)), ...[...t.notes, ...t.replies].filter((e) => staff.has(e.by)).map((e) => e.text)]
+        .flatMap((x) => x.split(/\r?\n/))
+        .filter((l) => (dayName.test(l) || dayPatterns(found.day).test(l)) && TIME.test(l) && !MOVED.test(l) && !EMAIL_STAMP.test(l));
+      // "The event starts at 4pm" beats "we can set up at 3pm".
+      const hit = lines.find((l) => /\b(event|starts?|begins?)\b/i.test(l)) || lines[0];
+      if (hit) found = { ...found, time: hit.match(TIME)[0], room: found.room || (hit.match(ROOM) || [])[0] };
+    }
     if (found) {
       const note = [...t.notes, ...t.replies].filter((e) => staff.has(e.by) && MOVED.test(e.text)).sort((a, b) => b.at - a.at)[0];
       const to = note && newDateIn(note.text, found.day);
@@ -551,8 +562,8 @@
   const dayMs = 24 * 3600e3;
   // A user message needs no answer when it's a thank-you or an "I'll get back
   // to you" and doesn't ask for anything. Tested against 12 months of tickets.
-  const ACK = /\b(thank(s| you)|appreciate|sounds good|all set|got it|keep (me|us) posted|will (try|keep|let you know|reach out|update|check)|i'?ll (check|try|let you know)|still out|haven'?t heard back|it works|works now|working (fine|now|again|great|well)|running smoothly|was able to|all good|no worries)\b/i;
-  const ASK = /\b(not working|doesn'?t work|isn'?t working|can'?t|cannot|unable|not (been )?able|do not|does not|doesn'?t|don'?t have|error|however|but now|now it|still (not|can|getting|having|needs?)|keep getting|every ?time|issue|problem|needs?|could|can you|can we|can someone|would you|if anyone|want you|let me know|would appreciate|would like|i'?d like|change it|screen ?shot|attached|find below|request|works for me|i'?m available|i am available|i can (do|come|meet|make)|asking|wondering|extension|kicked|but (it|i|the|then)|please (?!keep|feel free|disregard)\w+)\b/i;
+  const ACK = /\b(thank(s| you)|appreciate|sounds good|all set|got it|keep (me|us) posted|will (try|keep|let you know|reach out|update|check)|i'?ll (check|try|let you know)|still out|haven'?t heard back|it works|works now|working (fine|now|again|great|well)|running smoothly|was able to|all good|no worries|(coming|heading) (down|over)|on my way|be there shortly)\b/i;
+  const ASK = /\b(not working|doesn'?t work|isn'?t working|can'?t|cannot|unable|not (been )?able|do not|does not|doesn'?t|don'?t have|error|however|but now|now it|still (not|can|getting|having|needs?|experiencing|seeing|stuck)|difficult(y|ies)|keep getting|every ?time|issue|problem|needs?|could|can you|can we|can someone|would you|if anyone|want you|let me know|would appreciate|would like|i'?d like|change it|screen ?shot|attached|find below|request|works for me|i'?m available|i am available|i can (do|come|meet|make)|asking|wondering|extension|kicked|but (it|i|the|then)|please (?!keep|feel free|disregard)\w+)\b/i;
   const isAck = (text) => { const b = ownWords(text); return ACK.test(b) && !b.includes('?') && !ASK.test(b) && b.length <= 500; };
   const GREETING = /^(hello|hi|hey|dear|good (morning|afternoon|evening))\b/i;
   // Work notes that greet a colleague ("Hi Sam", "Good afternoon, everyone")
@@ -599,7 +610,10 @@
     const age = t.lastReply ? (now - t.lastReply.at) / dayMs : Infinity;
     // "Thanks, keep me posted" or "he's still out" doesn't need an answer.
     const userWroteLast = t.lastUser && (!t.lastReply || t.lastUser.at > t.lastReply.at);
-    const userAcked = userWroteLast && isAck(t.lastUser.text);
+    // Read every message since our last reply, not just the newest: users
+    // often send "Could I visit tomorrow?" and then "Thank you" a second later.
+    const unanswered = t.userMsgs.filter((m) => !t.lastReply || m.at > t.lastReply.at);
+    const userAcked = userWroteLast && unanswered.every((m) => isAck(m.text));
     const userWaiting = userWroteLast && !userAcked;
     const onHoldForUser = /awaiting caller|awaiting evidence/i.test(t.hold_reason || '');
     // The newest work note, when it's newer than our last reply, often says
@@ -630,7 +644,8 @@
       line = `the event was on ${fmtDate(event.day)} and the ticket is still open. Confirm it was covered and close it.`;
       pill = 'Close it';
     } else if (userWaiting) {
-      line = `${who} wrote on ${fmtDate(t.lastUser.at)} and nobody has answered yet. ${owner} should reply.`;
+      line = `${who} wrote on ${fmtDate(t.lastUser.at)} and nobody has answered yet.`
+        + (t.assigned_to ? ` ${owner} should reply.` : ' Nobody is assigned yet.');
       pill = 'User waiting'; tone = 'red';
     } else if (moved && (!t.lastReply || t.lastReply.at < moved.note.at)) {
       line = `the event moved from ${fmtDate(moved.from)} to ${fmtDate(moved.to)}${moved.time ? ` at ${moved.time}` : ''} (${fmtDate(moved.note.at)} ${moved.note.type === 'note' ? 'work note' : 'comment'}), `
@@ -729,6 +744,8 @@
     if (NO_RESPONSE.test(note)) return false;
     // Closed because the user asked ("closed for now as per your request").
     if (/\b(?:as per|per|at) your request\b|\bas you (?:requested|asked)\b/i.test(note)) return false;
+    // Still asking the user to call or come in before it can be done.
+    if (/\bplease (give us a call|call us|reach out to us|stop by|come (in|by)|visit us)\b[^.!?]{0,40}\bto (complete|finish)\b/i.test(note)) return true;
     const m = note.match(PENDING);
     return !!m && !(/come|stop|swing|pick/i.test(m[0]) && LOAN.test(note));
   };
@@ -762,14 +779,17 @@
     if (pendingIn(note)) problems.push('the note says the work isn\'t finished yet');
     if (NO_RESPONSE.test(note)) {
       // Count the days IT wrote after the user's last message, leaving out
-      // the closing message itself.
+      // the closing message itself and the first reply (the answer or the
+      // question), the same way open tickets are counted.
       const after = (t.lastUser ? t.replies.filter((x) => x.at > t.lastUser.at) : t.replies)
-        .filter((x) => !NO_RESPONSE.test(x.text));
-      const days = new Set(after.map((x) => x.at.toDateString())).size;
+        .filter((x) => !NO_RESPONSE.test(x.text)).sort((a, b) => a.at - b.at);
+      const firstDay = after.length ? after[0].at.toDateString() : null;
+      const days = new Set(after.map((x) => x.at.toDateString()).filter((d) => d !== firstDay)).size;
       if (days < 3) {
         problems.push(t.lastUser && !after.length
           ? `it was closed as no response, but ${firstName(t.caller_id)} wrote last on ${fmtDate(t.lastUser.at)}`
-          : `it was closed as no response after follow-ups on ${days} day${days === 1 ? '' : 's'}, and the rule is 3`);
+          : days === 0 ? 'it was closed as no response without any follow-ups, and the rule is 3'
+            : `it was closed as no response after follow-ups on ${days} day${days === 1 ? '' : 's'}, and the rule is 3`);
       }
     }
     // Only call out a missing reply when the user waited more than a day.

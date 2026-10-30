@@ -1,12 +1,17 @@
-// Builds bookmark.html from ticket-check.js. Run it after any change to the
-// script:  node build-bookmark.js
+// Builds bookmark.html, an offline page with the drag-to-install button.
+//   node build-bookmark.js
+// The bookmark is a loader: it pulls the hosted ticket-check.js on every
+// click, so it never needs rebuilding when the script changes.
 const fs = require('fs');
 const path = require('path');
 
-const source = fs.readFileSync(path.join(__dirname, 'ticket-check.js'), 'utf8');
-// Drop the header comment; the rest runs as written.
-const body = source.slice(source.indexOf('(async () => {'));
-const url = `javascript:${encodeURIComponent(body)}`;
+const SCRIPT_URL = 'https://userlaws.github.io/servicenow-ticket-check/ticket-check.js';
+// Same loader as the site (site/lib/script.ts). The ?t= keeps the browser
+// from using an old cached copy.
+const url = "javascript:(function(){var s=document.createElement('script');"
+  + `s.src='${SCRIPT_URL}?t='+Date.now();`
+  + "s.onerror=function(){alert('Ticket check could not load. Check your connection and try again.')};"
+  + 'document.body.appendChild(s);})();';
 
 const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
@@ -37,7 +42,7 @@ const html = `<!doctype html>
 </ol>
 <p class="note">If dragging doesn't work: right-click the favorites bar, choose Add page, name it Ticket check, and paste everything from the box below into the URL field.</p>
 <textarea readonly>${escapeHtml(url)}</textarea>
-<p class="note">The bookmark only reads tickets as you. It doesn't change anything in ServiceNow or send ticket data anywhere.</p>
+<p class="note">Each click loads the latest version of the script, so there's nothing to reinstall. The bookmark only reads tickets as you. It doesn't change anything in ServiceNow or send ticket data anywhere.</p>
 </body>
 </html>
 `;

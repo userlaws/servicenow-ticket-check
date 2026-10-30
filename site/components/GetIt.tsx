@@ -31,14 +31,14 @@ function BookmarkButton({ href, onClickHere }: { href: string; onClickHere: () =
 
 type CopyState = "idle" | "copied" | "failed";
 
-export default function GetIt({ href }: { href: string }) {
+export default function GetIt({ href, script }: { href: string; script: string }) {
   const [clicked, setClicked] = useState(false);
   const [copy, setCopy] = useState<CopyState>("idle");
 
   const copyScript = async () => {
     try {
       // Plain line breaks, so the Windows clipboard doesn't double them up.
-      await navigator.clipboard.writeText(decodeURIComponent(href.slice("javascript:".length)).split("\r\n").join("\n"));
+      await navigator.clipboard.writeText(script.split("\r\n").join("\n"));
       setCopy("copied");
     } catch {
       setCopy("failed");

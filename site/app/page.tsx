@@ -3,7 +3,7 @@ import GetIt from "@/components/GetIt";
 import Header from "@/components/Header";
 import { AvatarStack } from "@/components/Avatar";
 import ReportPreview from "@/components/ReportPreview";
-import { bookmarkHref } from "@/lib/script";
+import { bookmarkHref, consoleScript } from "@/lib/script";
 import { base } from "@/lib/base";
 
 // The sample people waiting in the hero, and why. Names are made up.
@@ -106,7 +106,7 @@ export default function Page() {
                 <b>Only reads.</b> Every request is a GET, so it can&rsquo;t change a ticket.
               </li>
               <li>
-                <b>No server.</b> It talks to your own ServiceNow instance and nothing else. The report stays in the panel until you copy it.
+                <b>No server.</b> The bookmark downloads the latest script from this site, then talks only to your own ServiceNow instance. No ticket data is sent anywhere, and the report stays in the panel until you copy it.
               </li>
             </ul>
           </div>
@@ -128,7 +128,7 @@ export default function Page() {
           </div>
         </section>
 
-        <GetIt href={href} />
+        <GetIt href={href} script={consoleScript()} />
       </main>
 
       <footer className="ftr">

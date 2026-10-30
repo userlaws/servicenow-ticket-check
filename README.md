@@ -19,6 +19,8 @@ See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
 If you see "not signed in", sign in again and click the bookmark again.
 
+The bookmark is a one-line loader. Each click downloads the latest `ticket-check.js` from the site, so updates reach you without reinstalling. Bookmarks made before 3.7.0 contain the whole script and stay on the version they were made from; drag the button from the site once more to switch to the loader.
+
 ### From the console
 
 1. Sign in to ServiceNow and open any page.
@@ -28,7 +30,7 @@ If you see "not signed in", sign in again and click the bookmark again.
 
 ### Offline bookmark page
 
-`node build-bookmark.js` writes `bookmark.html`, a local page with the same drag-to-install button. Rebuild it after changing the script.
+`node build-bookmark.js` writes `bookmark.html`, a local page with the same drag-to-install button. Since the bookmark is a loader, it doesn't need rebuilding when the script changes.
 
 The Copy button is what marks a report as sent. The next report counts resolved and new tickets from that point.
 
@@ -80,7 +82,7 @@ Phone calls, Teams messages and walk-ups don't count unless someone wrote them i
 
 ## Requests it sends
 
-All are `GET` requests to your own instance's Table API, with your session:
+The bookmark first downloads `ticket-check.js` from the site (GitHub Pages). It sends nothing to the site. After that, all requests are `GET` requests to your own instance's Table API, with your session:
 
 1. `sys_user_grmember`: which groups you're in
 2. `incident`: open tickets in those groups
@@ -99,7 +101,7 @@ npm install
 npm run dev
 ```
 
-The bookmark on the site, the copy button and the download are all built from `ticket-check.js`, so they always match the script. The sample people's pictures are [DiceBear Notionists](https://www.dicebear.com/styles/notionists/) (CC0), generated with `npm run avatars`.
+The site serves `ticket-check.js` at `/ticket-check.js`, which is what the bookmark loads. The copy button and the download are built from the same file, so they always match the script. The sample people's pictures are [DiceBear Notionists](https://www.dicebear.com/styles/notionists/) (CC0), generated with `npm run avatars`.
 
 ## License
 

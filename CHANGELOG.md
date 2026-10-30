@@ -4,6 +4,15 @@ All dates are MM/DD/YYYY. The plain-text report that Copy produces has kept
 the same format since 1.0, so pasting it into Teams works the same way in
 every version.
 
+## 3.7.0 (10/29/2026)
+
+- The bookmark is now a one-line loader. Each click downloads the latest
+  `ticket-check.js` from the site, so new versions reach everyone without
+  reinstalling. Bookmarks made before this version contain the whole script
+  and stay on their old version, so drag the button from the site once more.
+- "Copy the script" on the site still copies the full script for pasting
+  into the console.
+
 ## 3.6.0 (10/29/2026)
 
 Fixes found by checking two reports line by line, each tested against 3

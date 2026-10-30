@@ -61,6 +61,9 @@ export default function GetIt({ href, script }: { href: string; script: string }
           <p className={`get-hint${clicked ? " on" : ""}`} role="status">
             {clicked ? "Drag it instead. It only works when you click it on a ServiceNow page." : "It uses the ServiceNow session you’re already signed in with."}
           </p>
+          <p className="get-once">
+            You only add it once. Each click loads the latest version. If you added it before 10/29/2026, drag it again once so yours updates too.
+          </p>
           <p className="get-touch">Bookmarks can&rsquo;t be dragged on a phone. Open this page on your work computer.</p>
         </div>
       </div>

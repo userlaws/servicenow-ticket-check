@@ -3,7 +3,7 @@ import GetIt from "@/components/GetIt";
 import Header from "@/components/Header";
 import { AvatarStack } from "@/components/Avatar";
 import ReportPreview from "@/components/ReportPreview";
-import { bookmarkHref, consoleScript } from "@/lib/script";
+import { bookmarkHref, consoleScript, currentVersion, fixedBookmarkHref } from "@/lib/script";
 import { base } from "@/lib/base";
 
 // The sample people waiting in the hero, and why. Names are made up.
@@ -128,7 +128,7 @@ export default function Page() {
           </div>
         </section>
 
-        <GetIt href={href} script={consoleScript()} />
+        <GetIt href={href} fixedHref={fixedBookmarkHref()} version={currentVersion()} script={consoleScript()} />
       </main>
 
       <footer className="ftr">

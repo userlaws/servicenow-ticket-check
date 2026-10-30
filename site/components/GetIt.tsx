@@ -6,7 +6,17 @@ import { base } from "@/lib/base";
 
 // The real bookmark. React won't render a javascript: URL, so the href is
 // set on the element after it mounts.
-function BookmarkButton({ href, onClickHere }: { href: string; onClickHere: () => void }) {
+function BookmarkButton({
+  href,
+  label,
+  className = "bm-btn",
+  onClickHere,
+}: {
+  href: string;
+  label: string;
+  className?: string;
+  onClickHere: () => void;
+}) {
   const ref = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     ref.current?.setAttribute("href", href);
@@ -15,7 +25,7 @@ function BookmarkButton({ href, onClickHere }: { href: string; onClickHere: () =
     <a
       ref={ref}
       href="#get"
-      className="bm-btn"
+      className={className}
       draggable
       onClick={(e) => {
         // Clicking it here would run it on this page, which isn't ServiceNow.
@@ -24,14 +34,24 @@ function BookmarkButton({ href, onClickHere }: { href: string; onClickHere: () =
       }}
     >
       <BookmarkIcon size={16} />
-      Ticket check
+      {label}
     </a>
   );
 }
 
 type CopyState = "idle" | "copied" | "failed";
 
-export default function GetIt({ href, script }: { href: string; script: string }) {
+export default function GetIt({
+  href,
+  fixedHref,
+  version,
+  script,
+}: {
+  href: string;
+  fixedHref: string;
+  version: string;
+  script: string;
+}) {
   const [clicked, setClicked] = useState(false);
   const [copy, setCopy] = useState<CopyState>("idle");
 
@@ -57,7 +77,7 @@ export default function GetIt({ href, script }: { href: string; script: string }
             <span />
             <span className="fake-bar-slot">Drop it here</span>
           </div>
-          <BookmarkButton href={href} onClickHere={() => setClicked(true)} />
+          <BookmarkButton href={href} label="Ticket check" onClickHere={() => setClicked(true)} />
           <p className={`get-hint${clicked ? " on" : ""}`} role="status">
             {clicked ? "Drag it instead. It only works when you click it on a ServiceNow page." : "It uses the ServiceNow session you’re already signed in with."}
           </p>
@@ -65,6 +85,20 @@ export default function GetIt({ href, script }: { href: string; script: string }
             You only add it once. Each click loads the latest version. If you added it before 10/29/2026, drag it again once so yours updates too.
           </p>
           <p className="get-touch">Bookmarks can&rsquo;t be dragged on a phone. Open this page on your work computer.</p>
+        </div>
+
+        <div className="get-fixed">
+          <h3>Prefer to update yourself?</h3>
+          <p>
+            This bookmark keeps version {version} and never changes on its own. When you want a newer version, check the{" "}
+            <a href={`${base}/changelog/`}>changelog</a> and drag this button again.
+          </p>
+          <BookmarkButton
+            href={fixedHref}
+            label={`Ticket check ${version}`}
+            className="bm-btn bm-btn-light"
+            onClickHere={() => setClicked(true)}
+          />
         </div>
       </div>
 

@@ -27,3 +27,15 @@ export function bookmarkHref(): string {
     + "s.onerror=function(){alert('Ticket check could not load. Check your connection and try again.')};"
     + "document.body.appendChild(s);})();";
 }
+
+// The newest version in CHANGELOG.md, shown on the fixed bookmark.
+export function currentVersion(): string {
+  const md = readFileSync(path.join(process.cwd(), "..", "CHANGELOG.md"), "utf8");
+  return md.match(/^## (\S+)/m)?.[1] ?? "";
+}
+
+// A bookmark with the whole script inside it. It never changes on its own;
+// to get a newer version, the user drags the button from the site again.
+export function fixedBookmarkHref(): string {
+  return `javascript:${encodeURIComponent(consoleScript())}`;
+}

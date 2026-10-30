@@ -21,6 +21,8 @@ If you see "not signed in", sign in again and click the bookmark again.
 
 The bookmark is a one-line loader. Each click downloads the latest `ticket-check.js` from the site, so updates reach you without reinstalling. Bookmarks made before 3.7.0 contain the whole script and stay on the version they were made from; drag the button from the site once more to switch to the loader.
 
+If you'd rather update by hand, the site also has a fixed bookmark under "Prefer to update yourself?". It contains the whole script for the current version and never changes on its own. To update, check the [changelog](CHANGELOG.md) and drag it from the site again.
+
 ### From the console
 
 1. Sign in to ServiceNow and open any page.

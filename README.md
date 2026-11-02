@@ -72,7 +72,7 @@ The settings are at the top of the script, in `CONFIG`.
 
 ## How it decides
 
-A reply to the user is an "Additional comment" from IT. Someone counts as IT if they're in your groups, are assigned a ticket, have written a work note, or typed the comment straight into ServiceNow. User replies arrive by email and start with "reply from:", so a typed comment from anyone other than the caller is IT. Work notes never count as replies, because the user can't see them.
+A reply to the user is an "Additional comment" from IT. Someone counts as IT if they're in your groups, are assigned a ticket, have written a work note, have the `itil` role, or typed the comment straight into ServiceNow. User replies arrive by email and start with "reply from:", so a typed comment from anyone other than the caller is IT. Work notes never count as replies, because the user can't see them.
 
 Tickets opened by IT staff for themselves are left out of the reply and resolution checks but still show up as events.
 
@@ -91,7 +91,8 @@ The bookmark first downloads `ticket-check.js` from the site (GitHub Pages). It 
 3. `incident`: tickets resolved since your last check
 4. `incident`: tickets opened since your last check
 5. `sys_user_grmember`: who is in the groups that own those tickets
-6. `sys_user`: profile pictures for the people in the report (optional; initials are shown if it fails)
+6. `sys_user_has_role`: which callers have the `itil` role, so tickets IT staff opened count as IT's own (optional; skipped if it fails)
+7. `sys_user`: profile pictures for the people in the report (optional; initials are shown if it fails)
 
 ## The site
 

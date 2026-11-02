@@ -31,6 +31,7 @@ const REQUESTS = [
   { table: "incident", why: "Tickets resolved since your last check" },
   { table: "incident", why: "Tickets opened since your last check" },
   { table: "sys_user_grmember", why: "Who's on those groups, so staff replies count as IT" },
+  { table: "sys_user_has_role", why: "Which callers are IT staff, so tickets IT opened aren't flagged (optional)" },
   { table: "sys_user", why: "Profile pictures for the people in the report (optional)" },
 ];
 

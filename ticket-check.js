@@ -384,6 +384,16 @@
   // This picks up L3 and Central people who aren't in your groups.
   [...open, ...resolved].forEach((t) => journal(t.work_notes, 'note')
     .forEach((n) => { if (!/^guest$/i.test(n.by)) staff.add(n.by); }));
+  // Callers with the itil role (ServiceNow's IT staff license) are IT too, so
+  // a ticket an L3 admin opened for the team isn't treated as a user waiting.
+  // In 3 years of tickets, all 17 callers with the role were IT staff.
+  const callers = [...new Set([...open, ...resolved].map((t) => t.caller_id).filter((n) => n && !staff.has(n) && !/^guest$/i.test(n)))];
+  if (callers.length) {
+    try {
+      (await api('sys_user_has_role', `role.name=itil^user.nameIN${callers.join(',')}`, 'user.name', 1000))
+        .forEach((r) => r['user.name'] && staff.add(r['user.name']));
+    } catch (e) { /* role list not readable: keep the staff found above */ }
+  }
 
   const prepare = (t) => {
     const comments = journal(t.comments, 'comment');
@@ -417,8 +427,9 @@
     return new RegExp(`(?:(?<![\\d/.-])0?${m}[/.-]0?${day}(?:[/.-](?:20)?${String(d.getFullYear()).slice(2)})?(?![\\d:]|[/.-]\\d)`
       + `|\\b(?:${mon}|${mon.slice(0, 3)})\\.? ${day}(?:st|nd|rd|th)?\\b)`, 'i');
   };
-  const TIME = /\b\d{1,2}(?::\d{2})?\s?(?:am|pm|a\.m\.|p\.m\.)(?:\s?(?:-|to|–)\s?\d{1,2}(?::\d{2})?\s?(?:am|pm|a\.m\.|p\.m\.))?/i;
-  const ROOM = /\b(?:room|rm\.?)\s*[a-z]?\d{2,4}[a-z]?\b|\b\d{2}-\d{3}\b|\batrium\b/i;
+  // A range can leave am/pm off the start ("1:15 to 2:45pm").
+  const TIME = /\b\d{1,2}(?::\d{2})?\s?(?:am|pm|a\.m\.|p\.m\.)(?:\s?(?:-|to|–)\s?\d{1,2}(?::\d{2})?\s?(?:am|pm|a\.m\.|p\.m\.))?|\b\d{1,2}:\d{2}\s?(?:-|to|–)\s?\d{1,2}(?::\d{2})?\s?(?:am|pm|a\.m\.|p\.m\.)/i;
+  const ROOM = /\b(?:room|rm\.?):?\s*[a-z]?\d{2,4}[a-z]?\b|\b\d{2}-\d{3}\b|\batrium\b/i;
   // Something only counts as an event when the title or the text around the
   // date says so, which keeps election deadlines and login dates out.
   const EVENT_WORDS = /\b(event|session|meeting|summit|set ?up|workshop|presentation|training|webinar|conference|orientation|ceremony|program|council|q&a|panel|fair|common hour|booth)\b/i;
@@ -478,7 +489,9 @@
     const text = [t.short_description, t.description, ...t.userMsgs.map((c) => ownWords(c.text))].join('\n');
     // New-hire notices carry a start date, not an event.
     if (/\b(new hire|start date|first day)\b/i.test(t.short_description)) continue;
-    const lines = text.split(/\r?\n/).filter((l) => !/^\s*>/.test(l) && !/\b(sent|date|received|subject):/i.test(l) && !/\bwrote:/i.test(l)
+    // A "Date:" header starts the line; "time: 1:15pm date: 11/5" mid-line is
+    // a form, and so are room booking forms that put "Date:" after a break.
+    const lines = text.split(/\r?\n/).filter((l) => !/^\s*>/.test(l) && !/^\W*date:/i.test(l) && !/\b(sent|received|subject):/i.test(l) && !/\bwrote:/i.test(l)
       && !EMAIL_STAMP.test(l) && !/screen ?shot|\[image|\.(png|jpe?g|gif)\b|undeliverable/i.test(l));
     // Prefer a date in the title, then the first date in the body. A title
     // date only counts when the title is about an event or a support request,
@@ -496,7 +509,10 @@
       // The event word has to sit near the date, or the date has to be in the
       // title. An event word in the title alone isn't enough: a "Faculty
       // Council" nomination email full of election dates isn't an event.
-      if (d !== titleDay && !EVENT_WORDS.test(near) && !/\bwhen:/i.test(lines[idx])) continue;
+      // A date line with both a time and a room ("time: 1:15pm date: 11/5
+      // room: 410") is enough when the title is about an event or setup.
+      const filledIn = EVENT_WORDS.test(t.short_description) && TIME.test(lines[idx]) && ROOM.test(lines[idx]);
+      if (d !== titleDay && !EVENT_WORDS.test(near) && !/\bwhen:/i.test(lines[idx]) && !filledIn) continue;
       found = { t, day: d, time: (lines[idx].match(TIME) || near.match(TIME) || [])[0], room: (near.match(ROOM) || [])[0] };
       break;
     }
@@ -699,12 +715,12 @@
       } else if (onHoldForUser) {
         line += ` Send follow-up ${followUps + 1} of 3.`;
         pill = `Follow-up ${followUps + 1}/3`;
-      } else if (!promise && !/hold/i.test(t.state) && followUps >= 2) {
-        // In progress, but we've been the ones writing for days: it's waiting
-        // on the user, so the follow-up rule applies.
+      } else if (!promise && !/hold/i.test(t.state) && followUps >= 1) {
+        // In progress, but IT has written on two or more days with no answer:
+        // it's waiting on the user, so the follow-up rule applies.
         line += followUps >= 3
-          ? ` IT has written on ${followUps} days with no answer. Put it on hold awaiting caller, and close it as no response if the next follow-up isn't answered.`
-          : ` We've followed up on ${followUps} days with no answer. Put it on hold awaiting caller and send follow-up ${followUps + 1} of 3.`;
+          ? ` IT has followed up on ${followUps} days with no answer. Put it on hold awaiting caller, and close it as no response if the next follow-up isn't answered.`
+          : ` We've followed up on ${followUps} day${followUps === 1 ? '' : 's'} with no answer. Put it on hold awaiting caller and send follow-up ${followUps + 1} of 3.`;
         pill = 'Put on hold';
       } else if (!postIt) {
         line += ` ${owner} should send an update.`;
@@ -721,7 +737,7 @@
   const TEMPLATE = [
     // The greeting, plus a short run of names only when it ends in a comma.
     /\b(?:[Gg]ood\s+(?:[Mm]orning|[Aa]fternoon|[Ee]vening|[Dd]ay)|[Hh]ello|[Hh]i|[Hh]ey|[Dd]ear)\b(?:\s+(?:\p{Lu}[\p{L}'.-]*(?:(?:\s+(?:and|&)\s+|\s+)\p{Lu}[\p{L}'.-]*){0,3}|[\p{L}'.-]+(?:\s+[\p{L}'.-]+)?)\s*(?=,))?\s*[,.!:]?/gu,
-    /this ticket will be closed now[,.]?/gi, /we are closing this ticket[^.]*\./gi,
+    /this ticket will be closed now[,.]?/gi, /we are closing this ticket[^.]*\./gi, /please disregard (this|the) (message|email)[^.!]*[.!]?/gi,
     new RegExp(`if you have any (further |other )?(questions?|concerns?)[^.!]*${END}`, 'gi'), new RegExp(`please (feel free|don'?t hesitate)[^.!]*${END}`, 'gi'),
     /if (any )?(other|further|more) (issues?|problems?|questions?) (occurs?|come up|arise)[^.,!]{0,120}[,.!]?/gi, new RegExp(`feel free (to )?(email|call|contact|reach|submit)[^.!]*${END}`, 'gi'),
     // Thank-you lines only in their stock forms, so "Thank you for confirming the VPN was fixed" keeps its content.
@@ -821,7 +837,7 @@
   out.push('', `Events this week (${fmtDate(weekDays[0])} to ${fmtDate(weekDays[4])})`);
   if (!events.length) out.push('• None found in open tickets.');
   for (const e of events) {
-    const where = [e.time, e.room].filter(Boolean).join(', ');
+    const where = [e.time, e.room && e.room.replace(/^(?:room|rm\.?):?\s*/i, 'Room ')].filter(Boolean).join(', ');
     const status = eventPassed(e)
       ? 'It already happened and the ticket is still open.'
       : staff.has(e.t.caller_id) ? `${staffName(e.t.caller_id)} opened this ticket.` : (e.t.lastReply ? `${firstName(e.t.caller_id)} last heard from us on ${fmtDate(e.t.lastReply.at)}.` : `${firstName(e.t.caller_id)} hasn't had a reply confirming it.`);
@@ -879,7 +895,7 @@
   const fix = fixes.slice().sort(byOwner).map(card);
   const eventCards = events.map((e) => {
     const passed = eventPassed(e);
-    const where = [e.time, e.room].filter(Boolean).join(', ');
+    const where = [e.time, e.room && e.room.replace(/^(?:room|rm\.?):?\s*/i, 'Room ')].filter(Boolean).join(', ');
     const status = passed ? 'It already happened and the ticket is still open.'
       : staff.has(e.t.caller_id) ? `${staffName(e.t.caller_id)} opened this ticket.`
         : (e.t.lastReply ? `${firstName(e.t.caller_id)} last heard from us on ${fmtDate(e.t.lastReply.at)}.` : `${firstName(e.t.caller_id)} hasn't had a reply confirming it.`);

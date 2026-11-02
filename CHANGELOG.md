@@ -4,6 +4,26 @@ All dates are MM/DD/YYYY. The plain-text report that Copy produces has kept
 the same format since 1.0, so pasting it into Teams works the same way in
 every version.
 
+## 3.8.0 (11/02/2026)
+
+Fixes found by checking a report line by line, each tested against 3 years
+of tickets.
+
+- Callers with ServiceNow's `itil` role count as IT staff, so a ticket an L3
+  admin opened for the team isn't listed as a user waiting on a reply. In 3
+  years of tickets, every caller with the role was IT staff. This adds one
+  read request to `sys_user_has_role`.
+- An In Progress ticket where IT has written on two different days with no
+  answer now says to put it on hold awaiting caller and send the next
+  follow-up, as the README always said. Since 3.4.0 it took three days.
+- Events written as a form ("time: 1:15 to 2:45pm date: 11/5 room: 410") are
+  found when the title is about an event or setup. A "Date:" in the middle of
+  a line no longer gets the line skipped as an email header, which also
+  brings back room booking forms. Rooms written as "room: 410" show as
+  "Room 410", and times like "1:15 to 2:45pm" keep their start.
+- A resolution note that only says "please disregard this message" is
+  flagged as not saying what was done.
+
 ## 3.7.0 (10/29/2026)
 
 - The bookmark is now a one-line loader. Each click downloads the latest

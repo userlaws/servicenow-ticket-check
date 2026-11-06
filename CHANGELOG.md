@@ -4,6 +4,29 @@ All dates are MM/DD/YYYY. The plain-text report that Copy produces has kept
 the same format since 1.0, so pasting it into Teams works the same way in
 every version.
 
+## 3.9.0 (11/06/2026)
+
+Fixes found by checking a report line by line, each tested against 3 years
+of tickets.
+
+- A short work note that calls a ticket spam ("Spam") now says "Close it"
+  instead of asking for a reply. All 273 tickets in 3 years with such a note
+  ended up closed or canceled.
+- When IT's last comment told the user "I will close this ticket" and it's
+  still open a day later, the report says to close it instead of asking for
+  an update. In 3 years 99% of those tickets were closed, usually the same
+  day.
+- "The student never replied" and "User never responded" count as closed
+  with no response, so the three-follow-up rule is checked for them.
+- The "We will be closing this support ticket at this time" closing
+  template, with its "We appreciate your time" line and the college name
+  under the signature, is recognized, so a note that is only the template is
+  flagged.
+- Calendar notices ("[Appointment Notification] ... 2:30pm") aren't listed
+  as events.
+- Automated UPS return labels and Dell quote emails are left out like the
+  other automated notices.
+
 ## 3.8.0 (11/02/2026)
 
 Fixes found by checking a report line by line, each tested against 3 years

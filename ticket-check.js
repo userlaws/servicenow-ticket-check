@@ -41,7 +41,7 @@
       /\[?xerox [a-z]{2}\d+\]/i, /xerox contracted supplies/i, /automatic supplies order/i,
       /papercut mf\s+notification/i, /device not communicating/i, /end user digest/i,
       /cancellation notification/i, /order notification/i,
-      /shipment notification/i, /order no:/i,
+      /shipment notification/i, /order no:/i, /your returns? label is ready/i, /your dell quote/i,
     ],
 
     // Words that should never appear in a resolution note.
@@ -488,7 +488,8 @@
     // Only the user's own words count, not the email of ours they quoted back.
     const text = [t.short_description, t.description, ...t.userMsgs.map((c) => ownWords(c.text))].join('\n');
     // New-hire notices carry a start date, not an event.
-    if (/\b(new hire|start date|first day)\b/i.test(t.short_description)) continue;
+    // Calendar notices ("[Appointment Notification] ... Nov 06 2:30pm") are someone else's appointment.
+    if (/\b(new hire|start date|first day|appointment notification)\b/i.test(t.short_description)) continue;
     // A "Date:" header starts the line; "time: 1:15pm date: 11/5" mid-line is
     // a form, and so are room booking forms that put "Date:" after a break.
     const lines = text.split(/\r?\n/).filter((l) => !/^\s*>/.test(l) && !/^\W*date:/i.test(l) && !/\b(sent|received|subject):/i.test(l) && !/\bwrote:/i.test(l)
@@ -616,6 +617,8 @@
   // ticket is on hold for the user.
   const PROMISE = /\b(i'?ll|i will|we'?ll|we will)\s+(keep you (updated|posted|informed)|let you know|update you|provide (you with )?an update|get back to you|follow up with you|reach out (to you )?(once|when|as soon))/i;
 
+  const CLOSING = /\b(i|we)(\s+will|'ll|\s+am going to|'m going to)\s+(now\s+|be\s+)?clos(e|ing)\s+(this|the)\s+(ticket|request)\b/i;
+
   // Work notes that only say the ticket is still being worked on.
   const STATUS_NOTE = /^((the )?ticket (is )?(still )?in progress|in progress|(i am |i'?m |we are |we'?re )?still working on (this|it)|working on (this|it)|no update( yet)?( on this( request)?)?|still waiting( on central| for central)?|waiting (on|for) (central|updates?|an update)|waiting for (a )?response|awaiting (a )?response|assisting( user)?|will help|please (assist|help))\.?$/i;
 
@@ -646,6 +649,14 @@
     const event = events.find((e) => e.t === t);
     const twin = dupOf.get(t);
     const moved = moves.get(t);
+    // A short work note that calls the ticket spam, newer than our last
+    // comment. All 273 such tickets in 3 years of the help desk's history
+    // ended up closed or canceled.
+    const spamNote = t.notes.find((n) => staff.has(n.by) && n.text.length < 80 && /\bspam\b/i.test(n.text)
+      && (!t.lastReply || n.at > t.lastReply.at));
+    // Our last comment told the user the ticket is being closed. In 3 years
+    // 99% of those tickets were closed, usually the same day.
+    const closePromise = t.lastReply && age >= CONFIG.behindDays && CLOSING.test(ownWords(t.lastReply.text));
     let line = null;
     // The short label and color the panel shows next to the ticket.
     let pill = 'Update due'; let tone = 'amber';
@@ -663,7 +674,13 @@
       line = `${who} wrote on ${fmtDate(t.lastUser.at)} and nobody has answered yet.`
         + (t.assigned_to ? ` ${owner} should reply.` : ' Nobody is assigned yet.');
       pill = 'User waiting'; tone = 'red';
-    } else if (moved && (!t.lastReply || t.lastReply.at < moved.note.at)) {
+    } else if (spamNote) {
+      line = `a work note on ${fmtDate(spamNote.at)} calls this spam. Close it.`;
+      pill = 'Close it';
+    } else if (closePromise) {
+      line = `${staffName(t.lastReply.by)} told ${who} on ${fmtDate(t.lastReply.at)} that the ticket would be closed, and it's still open. Close it.`;
+      pill = 'Close it';
+    } else if (moved &&(!t.lastReply || t.lastReply.at < moved.note.at)) {
       line = `the event moved from ${fmtDate(moved.from)} to ${fmtDate(moved.to)}${moved.time ? ` at ${moved.time}` : ''} (${fmtDate(moved.note.at)} ${moved.note.type === 'note' ? 'work note' : 'comment'}), `
         + `but ${who} hasn't had a comment confirming it${t.lastReply ? ` since ${fmtDate(t.lastReply.at)}` : ''}. ${owner} should confirm the new date with ${who} in a comment.`;
       pill = 'Confirm date';
@@ -738,6 +755,8 @@
     // The greeting, plus a short run of names only when it ends in a comma.
     /\b(?:[Gg]ood\s+(?:[Mm]orning|[Aa]fternoon|[Ee]vening|[Dd]ay)|[Hh]ello|[Hh]i|[Hh]ey|[Dd]ear)\b(?:\s+(?:\p{Lu}[\p{L}'.-]*(?:(?:\s+(?:and|&)\s+|\s+)\p{Lu}[\p{L}'.-]*){0,3}|[\p{L}'.-]+(?:\s+[\p{L}'.-]+)?)\s*(?=,))?\s*[,.!:]?/gu,
     /this ticket will be closed now[,.]?/gi, /we are closing this ticket[^.]*\./gi, /please disregard (this|the) (message|email)[^.!]*[.!]?/gi,
+    /we will be closing this (support )?ticket[^.!]*[.!]?/gi, /we appreciate your (time|patience)[^.!]*[.!]?/gi,
+    /(and )?wish you an? (wonderful|great|good|nice)[^.!]*[.!]?/gi, /\b[a-z]+ community college\b/gi,
     new RegExp(`if you have any (further |other )?(questions?|concerns?)[^.!]*${END}`, 'gi'), new RegExp(`please (feel free|don'?t hesitate)[^.!]*${END}`, 'gi'),
     /if (any )?(other|further|more) (issues?|problems?|questions?) (occurs?|come up|arise)[^.,!]{0,120}[,.!]?/gi, new RegExp(`feel free (to )?(email|call|contact|reach|submit)[^.!]*${END}`, 'gi'),
     // Thank-you lines only in their stock forms, so "Thank you for confirming the VPN was fixed" keeps its content.
@@ -750,7 +769,7 @@
   // Staff names don't say what was done either ("Resolved by Pat").
   const STAFF_WORDS = new RegExp(`\\b(${[...new Set([...staff].flatMap((n) => n.split(/\s+/)))].map((w) => w.replace(/[^\w-]/g, '')).filter((w) => w.length > 2).join('|') || 'zzzz'})\\b`, 'gi');
   // Closed as no response. Since 10/08/2026 the team rule is follow-ups on three different days first.
-  const NO_RESPONSE = /\b(no (response|reply)(?! from (central|cis|l3|the vendor))|(haven'?t|have not) heard (back )?from (you|the (user|student|caller))|since we (haven'?t|have not) heard back|we (haven'?t|have not) heard back from you|(did not|didn'?t) hear back from (you|the (user|student|caller))|(user|student|caller) (did not|didn'?t) (respond|reply)|failed to (reply|respond)|because no reply was sent|closed due to no|unresponsive|lack of response)\b/i;
+  const NO_RESPONSE = /\b(no (response|reply)(?! from (central|cis|l3|the vendor))|(haven'?t|have not) heard (back )?from (you|the (user|student|caller))|since we (haven'?t|have not) heard back|we (haven'?t|have not) heard back from you|(did not|didn'?t) hear back from (you|the (user|student|caller))|(user|student|caller) (did not|didn'?t) (respond|reply)|failed to (reply|respond)|because no reply was sent|closed due to no|unresponsive|lack of response|never (replied|responded|heard back))\b/i;
   // IT's own unfinished work, or something that still has to happen. Tested on
   // 9,229 notes: 35 matches in 3 years, nearly all really unfinished.
   const PENDING = /\b((i|we)('ll| will)( be)? (contact|follow(ing)? up|update you|try again|attempt|reach out|look into|get back)|i'?ll update you|update the user once|when we have an update|we are (still )?waiting (on|for)|(clos(e|ing|ed)) (this |the )?(ticket|request|incident )?for now|for now,? (please )?(continue|use|keep)|for the time being|look into it (around|in|later)|still (working on|waiting (on|for))|(hope|need|we can|we'?ll|we will|have to)( to)? test (it |this )?again|try (to set (it )?up|again)? ?tomorrow|hope (some ?time )?soon|(?<!\bif (you|they|he|she) (are|is|'re) )(?<!\bif you )(unable|not able|wasn'?t able|couldn'?t|could not) to (set (it )?up|finish|complete)|will be (picked up|delivered|installed|replaced|shipped)|once (it|they|the (part|order|device|laptop)) (arrive|arrives|come in|comes in)|will (come|stop|swing) (in|by)|will pick (it )?up)\b|(^|[.!]\s+)will (follow up|contact|update|reach out|look into)\b/i;

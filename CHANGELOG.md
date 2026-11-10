@@ -4,6 +4,19 @@ All dates are MM/DD/YYYY. The plain-text report that Copy produces has kept
 the same format since 1.0, so pasting it into Teams works the same way in
 every version.
 
+## 3.10.0 (11/10/2026)
+
+Fixes found by checking a report line by line, each tested against 3 years
+of tickets.
+
+- "As we have not received a response, we will be closing this ticket" counts
+  as closed with no response, so the three-follow-up rule is checked for it.
+  Before, only wording like "no response" was recognized. "Not received a
+  response from Central" is still not a no-response closure.
+- A ticket where IT said "I will close this ticket" is no longer told to
+  close it when a newer work note says it's waiting on someone ("still
+  waiting on Central"). Those tickets are being kept open on purpose.
+
 ## 3.9.0 (11/06/2026)
 
 Fixes found by checking a report line by line, each tested against 3 years

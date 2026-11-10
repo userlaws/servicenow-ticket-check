@@ -655,8 +655,10 @@
     const spamNote = t.notes.find((n) => staff.has(n.by) && n.text.length < 80 && /\bspam\b/i.test(n.text)
       && (!t.lastReply || n.at > t.lastReply.at));
     // Our last comment told the user the ticket is being closed. In 3 years
-    // 99% of those tickets were closed, usually the same day.
-    const closePromise = t.lastReply && age >= CONFIG.behindDays && CLOSING.test(ownWords(t.lastReply.text));
+    // 99% of those tickets were closed, usually the same day. A newer work
+    // note that says it's waiting on someone means it was kept open on purpose.
+    const closePromise = t.lastReply && age >= CONFIG.behindDays && CLOSING.test(ownWords(t.lastReply.text))
+      && !t.notes.some((n) => staff.has(n.by) && n.at > t.lastReply.at && /\b(still waiting|waiting (on|for)|awaiting|pending)\b/i.test(n.text));
     let line = null;
     // The short label and color the panel shows next to the ticket.
     let pill = 'Update due'; let tone = 'amber';
@@ -769,7 +771,7 @@
   // Staff names don't say what was done either ("Resolved by Pat").
   const STAFF_WORDS = new RegExp(`\\b(${[...new Set([...staff].flatMap((n) => n.split(/\s+/)))].map((w) => w.replace(/[^\w-]/g, '')).filter((w) => w.length > 2).join('|') || 'zzzz'})\\b`, 'gi');
   // Closed as no response. Since 10/08/2026 the team rule is follow-ups on three different days first.
-  const NO_RESPONSE = /\b(no (response|reply)(?! from (central|cis|l3|the vendor))|(haven'?t|have not) heard (back )?from (you|the (user|student|caller))|since we (haven'?t|have not) heard back|we (haven'?t|have not) heard back from you|(did not|didn'?t) hear back from (you|the (user|student|caller))|(user|student|caller) (did not|didn'?t) (respond|reply)|failed to (reply|respond)|because no reply was sent|closed due to no|unresponsive|lack of response|never (replied|responded|heard back))\b/i;
+  const NO_RESPONSE = /\b(no (response|reply)(?! from (central|cis|l3|the vendor))|(haven'?t|have not) heard (back )?from (you|the (user|student|caller))|since we (haven'?t|have not) heard back|we (haven'?t|have not) heard back from you|(did not|didn'?t) hear back from (you|the (user|student|caller))|(user|student|caller) (did not|didn'?t) (respond|reply)|failed to (reply|respond)|because no reply was sent|closed due to no|unresponsive|lack of response|never (replied|responded|heard back)|(not|haven'?t|have not) received (a |any )?(response|reply)(?! from (central|cis|l3|the vendor)))\b/i;
   // IT's own unfinished work, or something that still has to happen. Tested on
   // 9,229 notes: 35 matches in 3 years, nearly all really unfinished.
   const PENDING = /\b((i|we)('ll| will)( be)? (contact|follow(ing)? up|update you|try again|attempt|reach out|look into|get back)|i'?ll update you|update the user once|when we have an update|we are (still )?waiting (on|for)|(clos(e|ing|ed)) (this |the )?(ticket|request|incident )?for now|for now,? (please )?(continue|use|keep)|for the time being|look into it (around|in|later)|still (working on|waiting (on|for))|(hope|need|we can|we'?ll|we will|have to)( to)? test (it |this )?again|try (to set (it )?up|again)? ?tomorrow|hope (some ?time )?soon|(?<!\bif (you|they|he|she) (are|is|'re) )(?<!\bif you )(unable|not able|wasn'?t able|couldn'?t|could not) to (set (it )?up|finish|complete)|will be (picked up|delivered|installed|replaced|shipped)|once (it|they|the (part|order|device|laptop)) (arrive|arrives|come in|comes in)|will (come|stop|swing) (in|by)|will pick (it )?up)\b|(^|[.!]\s+)will (follow up|contact|update|reach out|look into)\b/i;
